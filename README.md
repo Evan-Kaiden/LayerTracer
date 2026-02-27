@@ -1,18 +1,132 @@
-# LayerTracer
-Tracing Visual Attention Maps across layers in CNNs through combining Early Exit Neural Networks and Pertubation Saliency Based Methods.
+```{=html}
+<p align="center">
+```
+```{=html}
+<h1 align="center">
+```
+LayerTracer
+```{=html}
+</h1>
+```
+```{=html}
+<p align="center">
+```
+Tracing visual attention maps across layers in CNNs by combining
+`<b>`{=html}Early Exit Neural Networks`</b>`{=html} and
+`<b>`{=html}Perturbation-Based Saliency Methods`</b>`{=html}.
+```{=html}
+</p>
+```
+```{=html}
+</p>
+```
 
-## Background
-Early Exit Neural Networks are a class of Neural Networks which attach Internal Classifiers (ICs) to internal layers of a Neural Network. During inference we take predictions at each IC and based on some condition we allow an input to at earlier layers effectively reducing computatinal cost. While these methods are useful for computation efficiency they give something add an extra mode of analysis. Through ICs we are able to analyze the development of features across layers. 
+------------------------------------------------------------------------
 
-### E^2CM
-One specific method call E^2CM (https://ieeexplore.ieee.org/document/9891952) is one of the easiest and most flexible early exit strategies. After training a backbone CNN we can extract the mean features across classes. Then for calssification we are able to compare the class means with the current features and classifiy based on distance. This method allows for early exit with no extra training or architectural changes which is why I choose it for this project
+# Background
 
-### RISE
-Pertubation Based Saliency Methods are useful for determining which regions of an image are imporant for classificaition. These methods work by removing a region of an image, observing how the prediction changes, then repeating this with a large number of random masks. Through these observation we can build a saliency map by assigining the change in prediction to the removed portion of the image. One such method is called Randomized Input Sampling for Explanation RISE (https://arxiv.org/pdf/1806.07421.pdf). While I have somewhat simplfied the implementation the basic principle remains the same.
+## Early Exit Neural Networks
 
-## Method
-Using these two methods I have created a framework for observing what a model is "focusing on" layer by layer, allowing visualization of the progressive refinement of visual attention in the model. This works by applying the same masking and attribution as in RISE but across layers through comparison to the stored class means.
+Early Exit Neural Networks attach **Internal Classifiers (ICs)** to
+intermediate layers of a neural network.
 
-## Get the code running
+During inference, predictions are produced at each IC. If a prediction
+is confident enough, the model **exits early**, reducing computational
+cost.
 
-## Some Examples
+Beyond efficiency, early exits provide an additional analytical benefit:
+they allow us to **observe how feature representations evolve across
+layers**. By analyzing predictions at each IC, we can study how the
+network gradually builds semantic understanding.
+
+------------------------------------------------------------------------
+
+# Methods
+
+## E²CM
+
+One early exit strategy is **E²CM (Early Exit via Class Means)**.
+
+Instead of training additional classifiers, this method:
+
+1.  Trains a backbone CNN normally
+2.  Computes **mean feature vectors for each class**
+3.  During inference, compares intermediate features to these class
+    means
+
+Classification is performed using a **distance metric** to the class
+means.
+
+### Advantages
+
+-   No additional training
+-   No architectural modifications
+-   Flexible and easy to integrate
+
+This simplicity makes E²CM ideal for experimentation with early-exit
+analysis.
+
+Reference: https://ieeexplore.ieee.org/document/9891952
+
+------------------------------------------------------------------------
+
+## RISE
+
+Another key component is **RISE (Randomized Input Sampling for
+Explanation)**.
+
+RISE is a **perturbation-based saliency method** used to determine which
+regions of an image influence a model's prediction.
+
+The method works by:
+
+1.  Generating many random masks
+2.  Applying each mask to the input image
+3.  Observing how the prediction changes
+4.  Aggregating the results into a **saliency map**
+
+Pixels that consistently affect predictions receive **higher attribution
+values**, indicating stronger importance.
+
+Reference: https://arxiv.org/pdf/1806.07421.pdf
+
+------------------------------------------------------------------------
+
+# Method
+
+LayerTracer combines **E²CM** and **RISE** to visualize how a CNN's
+attention evolves across layers.
+
+Instead of computing saliency only at the final output, the framework:
+
+1.  Applies the same random masking strategy used in RISE
+2.  Computes attribution at **multiple intermediate layers**
+3.  Uses **distance to stored class means** for predictions at each
+    layer
+
+This produces **layer-wise saliency maps**, allowing visualization of
+how the network progressively refines its focus throughout the network.
+
+------------------------------------------------------------------------
+
+# Running the Code
+
+``` bash
+git clone <repo>
+cd LayerTracer
+
+pip install -r requirements.txt
+
+python run_example.py
+```
+
+------------------------------------------------------------------------
+
+# Examples
+
+Example visualization pipeline:
+
+    Original Image → Early Layer Attention → Mid Layer Attention → Final Layer Attention
+
+These visualizations show how the model transitions from **low-level
+texture detection** to **high-level semantic focus**.
