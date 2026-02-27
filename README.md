@@ -1,25 +1,10 @@
-```{=html}
+<h1 align="center">LayerTracer</h1>
+
 <p align="center">
-```
-```{=html}
-<h1 align="center">
-```
-LayerTracer
-```{=html}
-</h1>
-```
-```{=html}
-<p align="center">
-```
 Tracing visual attention maps across layers in CNNs by combining
-`<b>`{=html}Early Exit Neural Networks`</b>`{=html} and
-`<b>`{=html}Perturbation-Based Saliency Methods`</b>`{=html}.
-```{=html}
+<b>Early Exit Neural Networks</b> and
+<b>Perturbation-Based Saliency Methods</b>.
 </p>
-```
-```{=html}
-</p>
-```
 
 ------------------------------------------------------------------------
 
