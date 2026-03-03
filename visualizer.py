@@ -1,18 +1,24 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
+
+import math
 
 import os
+from tqdm import tqdm
+
 from utils import AverageMeter
 from layer_saliency import LayerSaliency
 
 class Visualizer():
-    def __init__(self, net, dataloader, repeats=1000, device='cpu'):
+    def __init__(self, net, dataloader, repeats=1000, chunk_size=10, device='cpu'):
 
         self.net = net
         self.dataloader = dataloader
         self.device = device
         self.usable_layer_types = (nn.Conv2d)
         self.tracked_layers = []
+        self.chunk_size = chunk_size
 
         for _, module in net.named_modules():
             if len(list(module.children())) > 0:
@@ -114,14 +120,12 @@ class Visualizer():
         device = x.device
         means = torch.stack([cm.avg for cm in prototypes], dim=0).to(device)
         diffs = []
-        ## make smaller if running into memory issues
-        chunk_size = 10
-        for i in range(0, means.size(0), chunk_size): 
-            diffs.append(x.unsqueeze(1) - means[i:i+chunk_size].unsqueeze(0))
+        
+        for i in range(0, means.size(0), self.chunk_size): 
+            diffs.append((x.unsqueeze(1) - means[i:i+self.chunk_size].unsqueeze(0)).cpu())
         diff = torch.cat(diffs, dim=1)
-        # diff = x.unsqueeze(1) - means.unsqueeze(0)
         diff = diff.reshape(diff.shape[0], diff.shape[1], -1)
-        dists = torch.linalg.norm(diff, dim=-1)
+        dists = torch.linalg.norm(diff.to(device), dim=-1)
         return torch.softmax(-dists, dim=-1)
     
     def _forward_with_prototype_comparision(self, x, cls):
@@ -172,7 +176,7 @@ class Visualizer():
         all_masked_proto_dists = []
 
         with torch.no_grad():
-            for i in range(0, masked_images.size(0), batch_size):
+            for i in tqdm(range(0, masked_images.size(0), batch_size), leave=False, desc="processing mask batches"):
                 batch = masked_images[i:i+batch_size]
                 dists = self._forward_with_prototype_comparision(batch, pred_cls)
                 all_masked_proto_dists.append(dists)

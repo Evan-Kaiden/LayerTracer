@@ -10,6 +10,8 @@ def get_dataloader(dataset, batch_size):
         return Cifar100DataSet(batch_size)
     if dataset == "places365":
         return Places365DataSet(batch_size)
+    if dataset == "oxford-pets":
+        return OxfordPetDataSet(batch_size)
     else:
         raise NotImplementedError
     
@@ -87,18 +89,12 @@ class Places365DataSet():
             transforms.Normalize(mean=self.mean, std=self.std)
         ])
 
-        self.valset = torchvision.datasets.Places365(
-            root="./data",
-            split="val",
-            small=True,
-            download=True,
-            transform=self.transform
+        self.valset = torchvision.datasets.Places365( 
+            root="./data", split="val", small=True, download=True, transform=self.transform
         )
 
         self.val_loader = torch.utils.data.DataLoader(
-            self.valset,
-            batch_size=self.batch_size,
-            shuffle=False
+            self.valset, batch_size=self.batch_size, shuffle=False
         )
 
         ## change if you want to load in the full dataset (it is very large)
@@ -106,3 +102,51 @@ class Places365DataSet():
         self.test_loader = self.val_loader
 
         self.classes = self.valset.classes
+
+class OxfordPetDataSet():
+    def __init__(self, batch_size):
+        self.batch_size = batch_size
+
+        # Standard ImageNet normalization (recommended for pretrained models)
+        self.mean = [0.485, 0.456, 0.406]
+        self.std  = [0.229, 0.224, 0.225]
+
+        self.transform = transforms.Compose([
+            transforms.Resize((224, 224)),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=self.mean, std=self.std)
+        ])
+
+        # Oxford-IIIT Pet splits:
+        # trainval = training + validation
+        # test = test split
+        self.trainset = torchvision.datasets.OxfordIIITPet(
+            root="./data",
+            split="trainval",
+            target_types="category",
+            download=True,
+            transform=self.transform
+        )
+
+        self.testset = torchvision.datasets.OxfordIIITPet(
+            root="./data",
+            split="test",
+            target_types="category",
+            download=True,
+            transform=self.transform
+        )
+
+        self.train_loader = torch.utils.data.DataLoader(
+            self.trainset,
+            batch_size=self.batch_size,
+            shuffle=False
+        )
+
+        self.test_loader = torch.utils.data.DataLoader(
+            self.testset,
+            batch_size=self.batch_size,
+            shuffle=False
+        )
+
+        # Class names
+        self.classes = self.trainset.classes

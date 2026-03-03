@@ -8,6 +8,30 @@ Tracing visual attention maps across layers in CNNs by combining
 
 ------------------------------------------------------------------------
 
+<table align="center">
+  <tr>
+    <td align="center">
+      <img src="example_visuals/cifar10_resnet56/res_15.gif" width="300"><br>
+      <sub><b>Dataset:</b> CIFAR-10<br><b>Model:</b> ResNet-56</sub>
+    </td>
+    <td align="center">
+      <img src="example_visuals/cifar10_resnet56/res_3.gif" width="300"><br>
+      <sub><b>Dataset:</b> CIFAR-10<br><b>Model:</b> ResNet-56</sub>
+    </td>
+  </tr>
+
+  <tr>
+    <td align="center">
+      <img src="example_visuals/pets_resnet50/res_1.gif" width="300"><br>
+      <sub><b>Dataset:</b> Oxford-Pets<br><b>Model:</b> ResNet-50</sub>
+    </td>
+    <td align="center">
+      <img src="example_visuals/pets_resnet50/res_2.gif" width="300"><br>
+      <sub><b>Dataset:</b> YourDataset<br><b>Model:</b> ResNet-50</sub>
+    </td>
+  </tr>
+</table>
+
 # Background
 
 ## Early Exit Neural Networks
@@ -102,16 +126,27 @@ cd LayerTracer
 
 pip install -r requirements.txt
 
-python run_example.py
+python main.py <args>
 ```
 
-------------------------------------------------------------------------
+### Command Line Arguments
 
-# Examples
+| Argument | Description |
+|----------|------------|
+| <span style="white-space:nowrap"><code>--model</code></span> | Model architecture to use. Currently only ResNet variants are supported. Additional models can be added by modifying the argument choices in <code>main.py</code>. |
+| <span style="white-space:nowrap"><code>--dataset</code></span> | Dataset to evaluate. Supported datasets: <code>cifar10</code>, <code>cifar100</code>, <code>places365</code>. To add a new dataset, create a dataset class following the structure in <code>data.py</code> and add the dataset name to the choices in <code>main.py</code>. |
+| <span style="white-space:nowrap"><code>--frequency</code></span> | Number of prototypes used. Additional options can be added in <code>visualizer.py</code> inside the <code>set_granularity</code> function. |
+| <span style="white-space:nowrap"><code>--result_save_path</code></span> | Path where generated GIFs will be saved. Must include a filename pattern: <code>PATH/TO/DIR/&lt;save_name&gt;.gif</code>. If multiple examples are saved, identifiers will be appended automatically. |
+| <span style="white-space:nowrap"><code>--prototype_save_path</code></span> | Directory where prototypes will be saved when <code>--save_prototypes</code> is enabled. |
+| <span style="white-space:nowrap"><code>--load_save_path</code></span> | Loads previously saved prototypes. The program must have already been run with <code>--save_prototypes</code>, and the same path used for <span style="white-space:nowrap"><code>--prototype_save_path</code></span> should be provided here. |
 
-Example visualization pipeline:
+## Starter Commands
 
-    Original Image → Early Layer Attention → Mid Layer Attention → Final Layer Attention
-
-These visualizations show how the model transitions from **low-level
-texture detection** to **high-level semantic focus**.
+### CIFAR-10 with provided prototypes with ResNet56
+```bash
+python3 main.py --model resnet56 --dataset cifar10 --prototype_load_path CM/cifar10_resnet56 --frequency all --result_save_path results/cifar10/resnet56/res.gif
+```
+### Oxford-Pets with providied prototypes with ResNet50
+```bash
+python3 main.py --model resnet50 --dataset oxford-pets --prototype_load_path CM/oxfordpets_resnet50 --frequency all --result_save_path results/oxford_pets/resnet50/res.gif
+```

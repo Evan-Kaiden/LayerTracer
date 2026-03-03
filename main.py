@@ -12,13 +12,15 @@ from visualizer import Visualizer
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", type=str, default="resnet20", choices=["resnet20", "resnet56", "resnet18", "resnet50"])
-    parser.add_argument("--dataset", type=str, default="cifar10", choices=["cifar10", "cifar100", "places365"])
+    parser.add_argument("--dataset", type=str, default="cifar10", choices=["cifar10", "cifar100", "places365", "oxford-pets"])
     parser.add_argument("--frequency", default="half", help="Frequency of Prototype comparision. Values can be: [int] where we space out \
                                              comarison evenly across model [str] options are \"all\" or \"half\" corresponding to all layers or \
                                              every other layer [list/tuple] where each value must be 1 or 0 and total length must be the number of \
                                              usable exits in the model where 1 corresponds to usage of a specific layer and 0 corresponds to ignorning \
                                              that layer for example if a model has 10 usable layers a valid input would be: 1 0 1 1 0 0 1 0 1 0 ")
     parser.add_argument("--batch_size", type=int, default=32)
+    parser.add_argument("--chunk_size", type=int, default=10, help="Number of classes to process at a time, if program is running slow set chunk_size=NUM_CLASSES\
+                                                                     for your dataset, if program is running out of memory reduce chunk size")
     parser.add_argument("--num_masks", type=int, default=5000, help="Number of random masks used to generate layer saliency, increasing \
                                                                      this number will improve visualization quality")
     parser.add_argument("--image_path_to_use", type=str, default=None, help="path/to/image if you would like to use a spcific image otherwise \
@@ -27,7 +29,7 @@ if __name__ == '__main__':
     parser.add_argument("--result_save_path", type=str, required=True)
     parser.add_argument("--save_prototypes", action="store_true", help="store the class means for the model")
     parser.add_argument("--prototype_save_path", type=str, help="location to save prototypes")
-    parser.add_argument("--load_save_path", type=str, help="location to load prototypes from", default=None)
+    parser.add_argument("--prototype_load_path", type=str, help="location to load prototypes from", default=None)
     args = parser.parse_args()
 
     device = get_device(verbose=True)
@@ -39,7 +41,7 @@ if __name__ == '__main__':
     else:
         loader = dset.train_loader
 
-    viz = Visualizer(model, loader, args.num_masks, device)
+    viz = Visualizer(model, loader, args.num_masks, args.chunk_size, device)
 
 
     if args.frequency.isdigit():
@@ -53,9 +55,9 @@ if __name__ == '__main__':
 
     viz.set_granularity(frequency)
 
-    if args.load_save_path is not None:
-        viz.load_class_means(args.load_save_path, device=device)
-        print(f"loaded class means from: {args.load_save_path}")
+    if args.prototype_load_path is not None:
+        viz.load_class_means(args.prototype_load_path, device=device)
+        print(f"loaded class means from: {args.prototype_load_path}")
     else:
         viz.gather_class_means(show_progress=True)
         if args.save_prototypes:
