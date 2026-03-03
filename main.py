@@ -5,15 +5,15 @@ from PIL import Image
 import argparse
 
 from data import get_dataloader
-from utils import get_model, get_device, make_gif
+from utils import get_device, make_gif
+from load_model import get_model
 from visualizer import Visualizer
-
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", type=str, default="resnet20", choices=["resnet20", "resnet56"])
-    parser.add_argument("--dataset", type=str, default="cifar10", choices=["cifar10", "cifar100"])
-    parser.add_argument("--frequency", help="Frequency of Prototype comparision. Values can be: [int] where we space out \
+    parser.add_argument("--model", type=str, default="resnet20", choices=["resnet20", "resnet56", "resnet18", "resnet50"])
+    parser.add_argument("--dataset", type=str, default="cifar10", choices=["cifar10", "cifar100", "places365"])
+    parser.add_argument("--frequency", default="half", help="Frequency of Prototype comparision. Values can be: [int] where we space out \
                                              comarison evenly across model [str] options are \"all\" or \"half\" corresponding to all layers or \
                                              every other layer [list/tuple] where each value must be 1 or 0 and total length must be the number of \
                                              usable exits in the model where 1 corresponds to usage of a specific layer and 0 corresponds to ignorning \
@@ -25,12 +25,21 @@ if __name__ == '__main__':
                                                                              a random image from the dataset will be used")
     parser.add_argument("--num_examples", type=int, default=1, help="sets the number of images to visualize if using random images from the selected dataset")
     parser.add_argument("--result_save_path", type=str, required=True)
+    parser.add_argument("--save_prototypes", action="store_true", help="store the class means for the model")
+    parser.add_argument("--prototype_save_path", type=str, help="location to save prototypes")
+    parser.add_argument("--load_save_path", type=str, help="location to load prototypes from", default=None)
     args = parser.parse_args()
 
     device = get_device(verbose=True)
-    model = get_model(args.dataset, args.model).eval()
+    model = get_model(args.dataset, args.model).eval().to(device)
     dset = get_dataloader(args.dataset, args.batch_size)
-    viz = Visualizer(model, dset.train_loader, args.num_masks, device)
+
+    if (args.dataset == "places365"):
+        loader = dset.val_loader
+    else:
+        loader = dset.train_loader
+
+    viz = Visualizer(model, loader, args.num_masks, device)
 
 
     if args.frequency.isdigit():
@@ -43,7 +52,15 @@ if __name__ == '__main__':
             frequency.append(int(use))
 
     viz.set_granularity(frequency)
-    viz.gather_class_means(show_progress=True)
+
+    if args.load_save_path is not None:
+        viz.load_class_means(args.load_save_path, device=device)
+        print(f"loaded class means from: {args.load_save_path}")
+    else:
+        viz.gather_class_means(show_progress=True)
+        if args.save_prototypes:
+            viz.save_class_means(args.prototype_save_path)
+            print(f"Saved prototypes to {args.prototype_save_path}")
 
     if args.image_path_to_use is not None:
         img = Image.open(args.image_path_to_use).convert("RGB")

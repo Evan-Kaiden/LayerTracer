@@ -1,7 +1,9 @@
 import torch
 import torch.nn as nn
 
-from utils import LayerSaliency, AverageMeter
+import os
+from utils import AverageMeter
+from layer_saliency import LayerSaliency
 
 class Visualizer():
     def __init__(self, net, dataloader, repeats=1000, device='cpu'):
@@ -109,8 +111,15 @@ class Visualizer():
                 del layer._forward_labels
     
     def _get_probs(self, x, prototypes):
-        means = torch.stack([cm.avg for cm in prototypes], dim=0).to(x.device)
-        diff = x.unsqueeze(1) - means.unsqueeze(0)
+        orig_device = x.device
+        means = torch.stack([cm.avg for cm in prototypes], dim=0)
+        diffs = []
+        ## make smaller if running into memory issues
+        chunk_size = 10
+        for i in range(0, means.size(0), chunk_size): 
+            diffs.append(x.unsqueeze(1) - means[i:i+chunk_size].unsqueeze(0))
+        diff = torch.cat(diffs, dim=1).to(orig_device)
+        # diff = x.unsqueeze(1) - means.unsqueeze(0)
         diff = diff.reshape(diff.shape[0], diff.shape[1], -1)
         dists = torch.linalg.norm(diff, dim=-1)
         return torch.softmax(-dists, dim=-1)
@@ -173,5 +182,19 @@ class Visualizer():
         saliency = self.visualizer.generate_visual(masks, baseline_proto_dists, masked_proto_dists)
         return saliency
         
+    def save_class_means(self, save_dir):
+        os.makedirs(save_dir, exist_ok=True)
+        for layer_idx, layer in enumerate(self.prototypes):
+            for cls, proto in enumerate(layer):
+                save_path = os.path.join(save_dir, f"cm_{layer_idx}_{cls}.pt")
+                torch.save(proto.avg.cpu(), save_path)
 
-        
+
+    def load_class_means(self, load_dir, device="cpu"):
+        assert os.path.exists(load_dir), "load path is invalid"
+
+        for layer_idx, layer in enumerate(self.prototypes):
+            for cls, _ in enumerate(layer):
+                load_path = os.path.join(load_dir, f"cm_{layer_idx}_{cls}.pt")
+                self.prototypes[layer_idx][cls].avg = torch.load(load_path, weights_only=False, map_location=device)
+

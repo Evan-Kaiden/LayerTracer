@@ -8,6 +8,8 @@ def get_dataloader(dataset, batch_size):
         return Cifar10DataSet(batch_size)
     if dataset == "cifar100":
         return Cifar100DataSet(batch_size)
+    if dataset == "places365":
+        return Places365DataSet(batch_size)
     else:
         raise NotImplementedError
     
@@ -71,3 +73,36 @@ class Cifar100DataSet():
 
         self.classes = self.trainset.classes
 
+class Places365DataSet():
+    def __init__(self, batch_size):
+        self.batch_size = batch_size
+
+        self.mean = [0.485, 0.456, 0.406]
+        self.std  = [0.229, 0.224, 0.225]
+
+        self.transform = transforms.Compose([
+            transforms.Resize(256),
+            transforms.CenterCrop(224),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=self.mean, std=self.std)
+        ])
+
+        self.valset = torchvision.datasets.Places365(
+            root="./data",
+            split="val",
+            small=True,
+            download=True,
+            transform=self.transform
+        )
+
+        self.val_loader = torch.utils.data.DataLoader(
+            self.valset,
+            batch_size=self.batch_size,
+            shuffle=False
+        )
+
+        ## change if you want to load in the full dataset (it is very large)
+        self.testset = self.valset
+        self.test_loader = self.val_loader
+
+        self.classes = self.valset.classes
