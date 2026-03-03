@@ -133,11 +133,17 @@ def make_gif(
         frames.append(frame)
         plt.close(fig)
 
+    hold_seconds = 1
+    hold_frames = int(fps * hold_seconds)
+
+    final_frame = frames[-1]
+    frames_extended = frames + [final_frame] * hold_frames
+
     if save_mp4:
         mp4_path = save_path.replace(".gif", ".mp4")
-        imageio.mimsave(mp4_path, frames, fps=fps)
+        imageio.mimsave(mp4_path, frames_extended, fps=fps, loop=0)
     else:
-        imageio.mimsave(save_path, frames, fps=fps)
+        imageio.mimsave(save_path, frames_extended, fps=fps, loop=0)
 
     print(f"Saved animation with {total_frames} frames.")
 
