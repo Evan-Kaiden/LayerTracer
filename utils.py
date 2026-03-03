@@ -1,12 +1,17 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 import random
 import numpy as np
+from scipy.ndimage import gaussian_filter
 
 import os
 import imageio
 import matplotlib.pyplot as plt
+from matplotlib.patches import FancyBboxPatch
+
+
 
 
 class AverageMeter(object):
@@ -23,76 +28,120 @@ class AverageMeter(object):
         self.avg = self.sum / self.count
 
 
-def make_gif(img: torch.Tensor, saliency: torch.Tensor, save_path: str) -> None:
+def make_gif(
+    img: torch.Tensor,
+    saliency: list[torch.Tensor],
+    save_path: str,
+    interp_factor: int = 8,
+    fps: int = 20,
+    blur_sigma: float = 1.0,
+    alpha: float = 0.35,
+    save_mp4: bool = False,
+):
+
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+
+    img = img.clamp(0, 1)
+    img_np = img.permute(1, 2, 0).cpu().numpy()
+
+    saliency_tensor = torch.stack(saliency)
+    L, H, W = saliency_tensor.shape
+
+    saliency_tensor = saliency_tensor.unsqueeze(0).unsqueeze(0).cpu()
+
+    smooth_saliency = F.interpolate(
+        saliency_tensor,
+        size=(L * interp_factor, H, W),
+        mode="trilinear",
+        align_corners=False,
+    ).squeeze()
+
+    total_frames = smooth_saliency.shape[0]
+
+    global_min = smooth_saliency.min()
+    global_max = smooth_saliency.max()
+    smooth_saliency = (smooth_saliency - global_min) / (
+        global_max - global_min + 1e-8
+    )
+
+    smooth_saliency = smooth_saliency.cpu().numpy()
+
     frames = []
 
-    img = img.clamp(0,1)
-    img_np = img.permute(1,2,0).numpy()
+    for i in range(total_frames):
 
-    num_layers = len(saliency)
+        heat = smooth_saliency[i]
+        heat = gaussian_filter(heat, sigma=blur_sigma)
 
-    for i in range(num_layers):
-        fig, ax = plt.subplots(figsize=(4,4))
-
+        fig, ax = plt.subplots(figsize=(4, 4))
         fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
 
-        heat = saliency[i].detach().cpu().numpy()
-
         ax.imshow(img_np)
-        ax.imshow(heat, cmap='jet', alpha=0.2, interpolation='bicubic')
+        ax.imshow(
+            heat,
+            cmap="magma",
+            alpha=alpha,
+            interpolation="bicubic",
+        )
 
-        progress = (i+1) / num_layers
+        progress = (i + 1) / total_frames
 
-        bar_x0 = 0.05
-        bar_y0 = 0.92
-        bar_w  = 0.9
-        bar_h  = 0.04
+        cx, cy = 0.92, 0.92
+        r = 0.045
 
-        ax.add_patch(plt.Rectangle(
-            (bar_x0, bar_y0), bar_w, bar_h,
+        theta_bg = np.linspace(0, 2 * np.pi, 400)
+        x_bg = cx + r * np.cos(theta_bg)
+        y_bg = cy + r * np.sin(theta_bg)
+
+        ax.plot(
+            x_bg,
+            y_bg,
             transform=ax.transAxes,
-            color='black', alpha=0.3
-        ))
+            color="white",
+            linewidth=2,
+            alpha=0.5,
+        )
 
-        ax.add_patch(plt.Rectangle(
-            (bar_x0, bar_y0), bar_w * progress, bar_h,
+        theta = np.linspace(-np.pi / 2, -np.pi / 2 + 2 * np.pi * progress, 400)
+        x = cx + r * np.cos(theta)
+        y = cy + r * np.sin(theta)
+
+        ax.plot(
+            x,
+            y,
             transform=ax.transAxes,
-            color='lime', alpha=0.9
-        ))
-
+            color="white",
+            linewidth=3,
+            alpha=0.95,
+        )
         ax.text(
-            0.5, 0.955,
-            f"Depth {i+1}/{num_layers}",
+            cx,
+            cy,
+            f"{int(progress*100)}%",
             transform=ax.transAxes,
-            ha='center', va='top',
-            color='white', fontsize=8,
-            weight="bold"
+            ha="center",
+            va="center",
+            color="white",
+            fontsize=8,
+            weight="bold",
         )
 
         ax.axis("off")
 
         fig.canvas.draw()
-
-        frame = np.array(fig.canvas.renderer.buffer_rgba())
-        frame = frame[:, :, :3]
-
+        frame = np.array(fig.canvas.renderer.buffer_rgba())[:, :, :3]
         frames.append(frame)
         plt.close(fig)
 
-    frames_dir = save_path[:-4] + "_frames"
+    if save_mp4:
+        mp4_path = save_path.replace(".gif", ".mp4")
+        imageio.mimsave(mp4_path, frames, fps=fps)
+    else:
+        imageio.mimsave(save_path, frames, fps=fps)
 
-    os.makedirs(os.path.dirname(save_path), exist_ok=True)
-    os.makedirs(frames_dir, exist_ok=True)
+    print(f"Saved animation with {total_frames} frames.")
 
-    for i, frame in enumerate(frames):
-        imageio.imwrite(f"{frames_dir}/frame_{i}.png", frame)
 
-    imageio.mimsave(
-        save_path,
-        frames,
-        duration=3,
-        loop=0
-    )
 
 def get_device(verbose=False):
     device = 'cpu'
