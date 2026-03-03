@@ -111,14 +111,14 @@ class Visualizer():
                 del layer._forward_labels
     
     def _get_probs(self, x, prototypes):
-        orig_device = x.device
-        means = torch.stack([cm.avg for cm in prototypes], dim=0)
+        device = x.device
+        means = torch.stack([cm.avg for cm in prototypes], dim=0).to(device)
         diffs = []
         ## make smaller if running into memory issues
         chunk_size = 10
         for i in range(0, means.size(0), chunk_size): 
             diffs.append(x.unsqueeze(1) - means[i:i+chunk_size].unsqueeze(0))
-        diff = torch.cat(diffs, dim=1).to(orig_device)
+        diff = torch.cat(diffs, dim=1)
         # diff = x.unsqueeze(1) - means.unsqueeze(0)
         diff = diff.reshape(diff.shape[0], diff.shape[1], -1)
         dists = torch.linalg.norm(diff, dim=-1)
