@@ -11,23 +11,47 @@ Tracing visual attention maps across layers in CNNs by combining
 <table align="center">
   <tr>
     <td align="center">
-      <img src="example_visuals/cifar10_resnet56/res_15.gif" width="300"><br>
+      <video src="example_visuals/cifar10_resnet56/res_0.mp4"
+             width="300"
+             autoplay
+             loop
+             muted
+             playsinline>
+      </video><br>
       <sub><b>Dataset:</b> CIFAR-10<br><b>Model:</b> ResNet-56</sub>
     </td>
     <td align="center">
-      <img src="example_visuals/cifar10_resnet56/res_3.gif" width="300"><br>
+      <video src="example_visuals/cifar10_resnet56/res_1.mp4"
+             width="300"
+             autoplay
+             loop
+             muted
+             playsinline>
+      </video><br>
       <sub><b>Dataset:</b> CIFAR-10<br><b>Model:</b> ResNet-56</sub>
     </td>
   </tr>
 
   <tr>
     <td align="center">
-      <img src="example_visuals/pets_resnet50/res_1.gif" width="300"><br>
+      <video src="example_visuals/pets_resnet50/res_0.mp4"
+             width="300"
+             autoplay
+             loop
+             muted
+             playsinline>
+      </video><br>
       <sub><b>Dataset:</b> Oxford-Pets<br><b>Model:</b> ResNet-50</sub>
     </td>
     <td align="center">
-      <img src="example_visuals/pets_resnet50/res_2.gif" width="300"><br>
-      <sub><b>Dataset:</b> YourDataset<br><b>Model:</b> ResNet-50</sub>
+      <video src="example_visuals/pets_resnet50/res_1.mp4"
+             width="300"
+             autoplay
+             loop
+             muted
+             playsinline>
+      </video><br>
+      <sub><b>Dataset:</b> Oxford-Pets<br><b>Model:</b> ResNet-50</sub>
     </td>
   </tr>
 </table>
