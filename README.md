@@ -142,11 +142,11 @@ python main.py <args>
 
 ## Starter Commands
 
-### CIFAR-10 with provided prototypes with ResNet56
+### CIFAR-10 with pretrianed ResNet56
 ```bash
-python3 main.py --model resnet56 --dataset cifar10 --prototype_load_path CM/cifar10_resnet56 --frequency all --result_save_path results/cifar10/resnet56/res.gif
+python3 main.py --model resnet56 --dataset cifar10 --frequency all --result_save_path results/cifar10/resnet56/res.gif
 ```
-### Oxford-Pets with providied prototypes with ResNet50
+### Oxford-Pets with pretrained ResNet50
 ```bash
-python3 main.py --model resnet50 --dataset oxford-pets --prototype_load_path CM/oxfordpets_resnet50 --frequency all --result_save_path results/oxford_pets/resnet50/res.gif
+python3 main.py --model resnet50 --dataset oxford-pets --frequency all --result_save_path results/oxford_pets/resnet50/res.gif
 ```
