@@ -164,7 +164,6 @@ class Visualizer():
                 
                 target_cls = module._forward_labels
                 proto_idx = sum(self.use_layer[:idx])
-                print(proto_idx)
                 module._result = self._get_probs(out, self.prototypes[proto_idx])[:, target_cls]
             return hook
 
