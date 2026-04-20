@@ -2,13 +2,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-import math
-
 import os
 from tqdm import tqdm
 
 from utils import AverageMeter
 from layer_saliency import LayerSaliency
+from trainer import PrototypeNet
 
 class Visualizer():
     def __init__(self, net, dataloader, repeats=1000, chunk_size=10, device='cpu'):
@@ -34,7 +33,7 @@ class Visualizer():
         image_size = next(iter(self.dataloader))[0].size(-1)
         self.visualizer = LayerSaliency(image_size, repeats=repeats)
      
-    def set_granularity(self, granularity):
+    def set_granularity(self, granularity, update_prototypes=True):
         if isinstance(granularity, str):
             if granularity == "all":
                 self.use_layer = [1] * self.usable_layers
@@ -63,12 +62,36 @@ class Visualizer():
 
 
         self.num_prototypes = sum(self.use_layer)
-        self.prototypes = [[AverageMeter() for _ in range(self.num_classes)] for _ in range(self.num_prototypes)]
+        if update_prototypes:
+            self.prototypes = [[AverageMeter() for _ in range(self.num_classes)] for _ in range(self.num_prototypes)]
         print(
             f"Using {self.num_prototypes} prototypes "
             f"(requested {granularity})"
         )
 
+    def select_layers(self, loader, threshold=0.05):        
+        proto_net = PrototypeNet(self.net, self.tracked_layers, self.use_layer, self.prototypes, self.chunk_size)
+        accuracies = proto_net.test(loader, self.device)
+
+        original_use_layer = self.use_layer.copy()
+        use_layer = self.use_layer
+        for i in range(1, len(use_layer)):
+            idx = sum(use_layer[:i])
+            prev_idx = sum(use_layer[:i-1])
+            if accuracies[idx] - accuracies[prev_idx] > threshold:
+                use_layer[i - 1] = 0
+        
+        self.use_layer = use_layer
+        self.num_prototypes = sum(use_layer)
+        new_prototypes = []
+        for idx in range(len(self.use_layer)):
+            if self.use_layer[idx] == 1:
+                proto_idx = sum(original_use_layer[:idx])
+                new_prototypes.append(self.prototypes[proto_idx])
+
+        self.prototypes = new_prototypes
+        print(f"Selected {self.num_prototypes} layers")
+    
     def gather_class_means(self, show_progress=False):
         self.net.eval()
         self.net.to(self.device)
@@ -100,6 +123,7 @@ class Visualizer():
                 y = y.to(self.device)
 
                 for layer in self.tracked_layers:
+                    
                     layer._forward_labels = y
 
                 self.net(x)
@@ -140,6 +164,7 @@ class Visualizer():
                 
                 target_cls = module._forward_labels
                 proto_idx = sum(self.use_layer[:idx])
+                print(proto_idx)
                 module._result = self._get_probs(out, self.prototypes[proto_idx])[:, target_cls]
             return hook
 
@@ -193,7 +218,6 @@ class Visualizer():
                 save_path = os.path.join(save_dir, f"cm_{layer_idx}_{cls}.pt")
                 torch.save(proto.avg.cpu(), save_path)
 
-
     def load_class_means(self, load_dir, device="cpu"):
         assert os.path.exists(load_dir), "load path is invalid"
 
@@ -202,3 +226,11 @@ class Visualizer():
                 load_path = os.path.join(load_dir, f"cm_{layer_idx}_{cls}.pt")
                 self.prototypes[layer_idx][cls].avg = torch.load(load_path, weights_only=False, map_location=device)
 
+    def get_prototypes(self):
+        return self.prototypes
+    
+    def get_layer_tracking(self):
+        return self.tracked_layers, self.use_layer
+ 
+    def set_prototypes(self, prototypes):
+        self.prototypes = prototypes

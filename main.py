@@ -8,6 +8,8 @@ from data import get_dataloader
 from utils import get_device, make_gif
 from load_model import get_model
 from visualizer import Visualizer
+from trainer import PrototypeNet
+from utils import AverageMeter
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -18,6 +20,8 @@ if __name__ == '__main__':
                                              every other layer [list/tuple] where each value must be 1 or 0 and total length must be the number of \
                                              usable exits in the model where 1 corresponds to usage of a specific layer and 0 corresponds to ignorning \
                                              that layer for example if a model has 10 usable layers a valid input would be: 1 0 1 1 0 0 1 0 1 0 ")
+    parser.add_argument("--use_selection", action='store_true', help='Will select layers that smoothly transistion accuracy of prototypes from \
+                                                                                 low --> high to avoide any visualizing noisy layers')
     parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--chunk_size", type=int, default=10, help="Number of classes to process at a time, if program is running slow set chunk_size=NUM_CLASSES\
                                                                      for your dataset, if program is running out of memory reduce chunk size")
@@ -30,6 +34,7 @@ if __name__ == '__main__':
     parser.add_argument("--save_prototypes", action="store_true", help="store the class means for the model")
     parser.add_argument("--prototype_save_path", type=str, help="location to save prototypes")
     parser.add_argument("--prototype_load_path", type=str, help="location to load prototypes from", default=None)
+    parser.add_argument("--tune_prototype_epochs", type=int, default=0)
     args = parser.parse_args()
 
     device = get_device(verbose=True)
@@ -43,7 +48,6 @@ if __name__ == '__main__':
 
     viz = Visualizer(model, loader, args.num_masks, args.chunk_size, device)
 
-
     if args.frequency.isdigit():
         frequency = int(args.frequency)
     elif args.frequency.count(" ") == 0:
@@ -52,7 +56,7 @@ if __name__ == '__main__':
         frequency = []
         for use in args.frequency.split(" "):
             frequency.append(int(use))
-
+ 
     viz.set_granularity(frequency)
 
     if args.prototype_load_path is not None:
@@ -63,6 +67,28 @@ if __name__ == '__main__':
         if args.save_prototypes:
             viz.save_class_means(args.prototype_save_path)
             print(f"Saved prototypes to {args.prototype_save_path}")
+
+    if args.tune_prototype_epochs > 0:
+        print(f"Tuning prototypes for {args.tune_prototype_epochs} epochs")
+        tracked_layers, use_layer = viz.get_layer_tracking()
+        prototypes = viz.get_prototypes()
+        prototype_trainer = PrototypeNet(model, tracked_layers, use_layer, prototypes)
+        trained_prototypes = prototype_trainer.train_prototypes(args.tune_prototype_epochs, loader, device=device)
+
+        detached_converted_prototypes = []
+        for layer_protos in prototype_trainer.prototypes:
+            layer = []
+            for proto in layer_protos:
+                am = AverageMeter()
+                am.avg = proto.detach().cpu()
+                layer.append(am)
+            detached_converted_prototypes.append(layer)
+        
+        viz.set_prototypes(detached_converted_prototypes)
+
+    if args.use_selection:
+        viz.select_layers(loader)
+        print("Selected layers based on prototype accuracy consistency")
 
     if args.image_path_to_use is not None:
         img = Image.open(args.image_path_to_use).convert("RGB")
